@@ -1,0 +1,73 @@
+# Create Virtual Network
+$resourcegroupname = "w-rgr-adv25-01"
+$vnetname = "w-vne-adv25-01"
+$location = "Switzerland North"
+$addresses = "192.168.0.0/16"
+
+az network vnet create `
+    -g $resourcegroupname `
+    -n $vnetname `
+    -l $location `
+    --address-prefixes $addresses
+
+    # Add Server Subnet
+$subnetname = "servers"
+$addressprefix = "192.168.1.0/24"
+az network vnet subnet create `
+    -g $resourcegroupname `
+    --vnet-name $vnetname `
+    --name $subnetname `
+    --address-prefixes $addressprefix
+
+# Create NSG
+$nsgname = "w-nsg-adv25-01"
+az network nsg create `
+    -g $resourcegroupname `
+    -n $nsgname
+
+# Add NSG Rule for RDP
+$rulename = "AllowRDP"
+$rulepriority = 300
+az network nsg rule create `
+    -g $resourcegroupname `
+    --nsg-name $nsgname `
+    --name $rulename `
+    --priority 300 `
+    --access allow `
+    --protocol TCP `
+    --destination-port-ranges 3389 `
+    --direction Inbound
+
+# Add NSG to Server Subnet
+az network vnet subnet update `
+    -g $resourcegroupname `
+    --vnet-name $vnetname `
+    --name $subnetname `
+    --network-security-group $nsgname
+
+# Create Virtual Machine
+$vmusername = "adv25"
+$vmpassword = "passWORD12345$"
+$vmimage = "win2019datacenter"
+$nicname = "w-nic-adv-25"
+$vmname = "w-vma-adv25-01"
+$vmcomputername = "vm1"
+$vmosdiskname = "w-dsk-adv25-01"
+
+az network nic create `
+    -l $location `
+    -g $resourcegroupname `
+    --vnet-name $vnetname `
+    --subnet $subnetname `
+    --name $nicname 
+
+az vm create `
+    -l $location `
+    -g $resourcegroupname `
+    --name $vmname `
+    --computer-name $vmcomputername `
+    --nics $nicname `
+    --image $vmimage `
+    --os-disk-name $vmosdiskname `
+    --admin-username $vmusername `
+    --admin-password $vmpassword
